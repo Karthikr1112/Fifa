@@ -54,15 +54,32 @@ TEMPLATES = [
 WSGI_APPLICATION = 'price_project.wsgi.application'
 
 # ── Database ──────────────────────────────────────────────────────────────────
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-        'OPTIONS': {
-            'timeout': 20,  # seconds before "database is locked" error
-        },
+DATABASE_ENGINE = config('DB_ENGINE', default='django.db.backends.mysql')
+
+if DATABASE_ENGINE == 'django.db.backends.mysql':
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': config('DB_NAME', default='fifa'),
+            'USER': config('DB_USER', default='mis_user'),
+            'PASSWORD': config('DB_PASSWORD', default='Mis$2727'),
+            'HOST': config('DB_HOST', default='192.168.2.29'),
+            'PORT': config('DB_PORT', default='3306'),
+            'OPTIONS': {
+                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            }
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+            'OPTIONS': {
+                'timeout': 20,  # seconds before "database is locked" error
+            },
+        }
+    }
 
 # ── Password Validation ───────────────────────────────────────────────────────
 AUTH_PASSWORD_VALIDATORS = [
@@ -106,52 +123,14 @@ SESSION_COOKIE_SAMESITE = 'Lax'
 
 # ── HTTPS / Security Headers (active only when DEBUG=False) ───────────────────
 if not DEBUG:
-    SECURE_SSL_REDIRECT            = True
-    SECURE_HSTS_SECONDS            = 31536000   # 1 year
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD            = True
+    SECURE_SSL_REDIRECT            = config('SECURE_SSL_REDIRECT', default=True, cast=bool)
+    SECURE_HSTS_SECONDS            = config('SECURE_HSTS_SECONDS', default=31536000, cast=int)
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = config('SECURE_HSTS_INCLUDE_SUBDOMAINS', default=True, cast=bool)
+    SECURE_HSTS_PRELOAD            = config('SECURE_HSTS_PRELOAD', default=True, cast=bool)
     SECURE_BROWSER_XSS_FILTER      = True
     SECURE_CONTENT_TYPE_NOSNIFF    = True
-    SESSION_COOKIE_SECURE          = True
-    CSRF_COOKIE_SECURE             = True
+    SESSION_COOKIE_SECURE          = config('SESSION_COOKIE_SECURE', default=True, cast=bool)
+    CSRF_COOKIE_SECURE             = config('CSRF_COOKIE_SECURE', default=True, cast=bool)
     CSRF_TRUSTED_ORIGINS           = config('CSRF_TRUSTED_ORIGINS', default='', cast=Csv())
     X_FRAME_OPTIONS                = 'DENY'
 
-# ── Logging ───────────────────────────────────────────────────────────────────
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '[{asctime}] {levelname} {name} {message}',
-            'style': '{',
-        },
-    },
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-            'formatter': 'verbose',
-        },
-        'file': {
-            'class': 'logging.FileHandler',
-            'filename': BASE_DIR / 'logs' / 'django.log',
-            'formatter': 'verbose',
-        },
-    },
-    'root': {
-        'handlers': ['console', 'file'],
-        'level': 'WARNING',
-    },
-    'loggers': {
-        'django': {
-            'handlers': ['console', 'file'],
-            'level': 'WARNING',
-            'propagate': False,
-        },
-        'customers': {
-            'handlers': ['console', 'file'],
-            'level': 'INFO',
-            'propagate': False,
-        },
-    },
-}
