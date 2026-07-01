@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block title %}Access Denied — FIFA Event Game{% endblock %}
+{% block page_title %}Access Denied{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column align-items-center justify-content-center" style="min-height:60vh; text-align:center;">
+  <div style="font-size:5rem; margin-bottom:1rem;">🚫</div>
+  <h2 class="fw-bold" style="color:#1a1a2e;">Access Denied</h2>
+  <p class="text-muted mt-2" style="max-width:420px;">
+    You don't have permission to view this page.
+    This area is restricted to <strong>Admin</strong> users only.
+  </p>
+  <div class="d-flex flex-wrap justify-content-center gap-3 mt-4">
+    <a href="{% url 'register' %}" class="btn btn-primary" style="border-radius:10px;">
+      <i class="bi bi-person-plus-fill me-2"></i>Go to Registration
+    </a>
+    <a href="{% url 'logout' %}" class="btn btn-outline-danger" style="border-radius:10px;">
+      <i class="bi bi-box-arrow-left me-2"></i>Logout
+    </a>
+  </div>
+</div>
+{% endblock %}

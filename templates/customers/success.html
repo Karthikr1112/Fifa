@@ -1,0 +1,234 @@
+{% extends 'base.html' %}
+
+{% block title %}Registration Successful — FIFA Event Game{% endblock %}
+{% block page_title %}Registration Successful{% endblock %}
+{% block page_subtitle %}Customer is ready to play{% endblock %}
+{% block nav_register %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+  .success-wrapper { max-width: 600px; margin: 0 auto; }
+
+  .success-header {
+    background: linear-gradient(135deg, #2dc653 0%, #1a7a32 100%);
+    border-radius: 14px 14px 0 0;
+    padding: 2.5rem 2rem;
+    text-align: center;
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .success-header::before {
+    content: '';
+    position: absolute;
+    width: 300px; height: 300px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 50%;
+    top: -100px; right: -80px;
+  }
+
+  .success-icon-ring {
+    width: 90px; height: 90px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    border: 3px solid rgba(255,255,255,0.5);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2.5rem;
+    margin: 0 auto 1.25rem;
+    animation: pulse-ring 1.5s ease-out 1;
+  }
+
+  @keyframes pulse-ring {
+    0%   { transform: scale(0.6); opacity: 0; }
+    60%  { transform: scale(1.08); opacity: 1; }
+    100% { transform: scale(1); }
+  }
+
+  .token-card {
+    background: #f8f9fa;
+    border: 1.5px dashed #dee2e6;
+    border-radius: 12px;
+    padding: 1.25rem;
+    position: relative;
+  }
+
+  .token-card::before,
+  .token-card::after {
+    content: '';
+    position: absolute;
+    width: 20px; height: 20px;
+    background: #f4f6fb;
+    border-radius: 50%;
+    top: 50%; transform: translateY(-50%);
+  }
+  .token-card::before { left: -10px; }
+  .token-card::after  { right: -10px; }
+
+  .detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid #e9ecef;
+    font-size: 0.9rem;
+  }
+
+  .detail-row:last-child { border-bottom: none; }
+  .detail-label { color: #6c757d; font-weight: 500; flex-shrink: 0; }
+  .detail-value { font-weight: 600; color: #1a1a2e; word-break: break-all; text-align: right; }
+
+  .entry-id {
+    background: linear-gradient(135deg, #e63946, #f4a261);
+    color: #fff;
+    border-radius: 8px;
+    padding: 2px 10px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+  }
+
+  .btn-new-reg {
+    background: linear-gradient(135deg, #e63946, #c1121f);
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    font-weight: 700;
+    padding: 0.75rem;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .btn-new-reg:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(230,57,70,0.3);
+    color: #fff;
+  }
+
+  @media (max-width: 480px) {
+    .success-wrapper { padding: 0 0.25rem; }
+    .success-header { padding: 2rem 1.25rem; }
+    .card-body { padding: 1.25rem !important; }
+  }
+
+  /* Confetti canvas */
+  #confetti-canvas {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9999;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<canvas id="confetti-canvas"></canvas>
+
+<div class="success-wrapper">
+  <div class="card">
+
+    <!-- Success Header -->
+    <div class="success-header">
+      <div class="success-icon-ring">✅</div>
+      <h3 class="fw-bold mb-1">You're In!</h3>
+      <p class="mb-0 opacity-85">Registration complete — Good luck, {{ customer.name }}!</p>
+    </div>
+
+    <div class="card-body p-4">
+
+      <!-- Token / Entry Card -->
+      <p class="text-muted small mb-2 d-flex align-items-center gap-1">
+        <i class="bi bi-ticket-perforated-fill text-danger"></i>
+        Show this entry card at the game counter
+      </p>
+
+      <div class="token-card mb-4">
+        <div class="detail-row">
+          <span class="detail-label"><i class="bi bi-hash me-1"></i>Entry ID</span>
+          <span class="entry-id">#{{ customer.pk }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label"><i class="bi bi-person me-1"></i>Name</span>
+          <span class="detail-value">{{ customer.name }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label"><i class="bi bi-phone me-1"></i>Mobile</span>
+          <span class="detail-value font-monospace">{{ customer.mobile_number }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label"><i class="bi bi-shield-lock me-1"></i>Aadhar</span>
+          <span class="detail-value font-monospace text-muted">{{ customer.aadhar_number }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label"><i class="bi bi-receipt me-1"></i>Bill No.</span>
+          <span class="detail-value">{{ customer.bill_number }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label"><i class="bi bi-clock me-1"></i>Registered</span>
+          <span class="detail-value" style="font-size:0.82rem;">{{ customer.registered_at|date:"d M Y, H:i" }}</span>
+        </div>
+      </div>
+
+      <!-- CTA Buttons -->
+      <div class="d-grid gap-2">
+        <a href="{% url 'register' %}" class="btn btn-new-reg d-flex align-items-center justify-content-center gap-2">
+          <i class="bi bi-person-plus-fill"></i> Register Next Customer
+        </a>
+        {% if user.is_staff %}
+        <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary d-flex align-items-center justify-content-center gap-2" style="border-radius:10px;">
+          <i class="bi bi-speedometer2"></i> Go to Dashboard
+        </a>
+        {% endif %}
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Lightweight canvas confetti
+  (function () {
+    const canvas = document.getElementById('confetti-canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const colors = ['#e63946','#f4a261','#2dc653','#457b9d','#ffd60a','#fff'];
+    const pieces = Array.from({length: 120}, () => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height - canvas.height,
+      r: 4 + Math.random() * 6,
+      d: 3 + Math.random() * 4,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      tilt: Math.random() * 10 - 10,
+      tiltAngle: 0,
+      tiltSpeed: Math.random() * 0.1 + 0.05,
+    }));
+
+    let animId;
+    let frame = 0;
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      pieces.forEach(p => {
+        p.tiltAngle += p.tiltSpeed;
+        p.y += p.d;
+        p.tilt = Math.sin(p.tiltAngle) * 12;
+        ctx.beginPath();
+        ctx.lineWidth = p.r;
+        ctx.strokeStyle = p.color;
+        ctx.moveTo(p.x + p.tilt + p.r / 2, p.y);
+        ctx.lineTo(p.x + p.tilt, p.y + p.tilt + p.r / 2);
+        ctx.stroke();
+      });
+      frame++;
+      if (frame < 180) {
+        animId = requestAnimationFrame(draw);
+      } else {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    }
+    draw();
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,562 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard — FIFA Event Game{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block page_subtitle %}Live overview of event registrations{% endblock %}
+{% block nav_dashboard %}active{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<style>
+  .stat-card-red    { background: linear-gradient(135deg, #e63946, #c1121f); }
+  .stat-card-green  { background: linear-gradient(135deg, #2dc653, #1a7a32); }
+  .stat-card-orange { background: linear-gradient(135deg, #f4a261, #e76f51); }
+  .stat-card-blue   { background: linear-gradient(135deg, #457b9d, #1d3557); }
+
+  .chart-card { border-radius: 14px; }
+
+  .table th {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #6c757d;
+    border-bottom: 2px solid #e9ecef;
+    padding: 0.85rem 1rem;
+    white-space: nowrap;
+  }
+
+  .table td {
+    padding: 0.85rem 1rem;
+    vertical-align: middle;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 0.9rem;
+  }
+
+  .table tbody tr:hover { background: #fafafa; }
+
+  .avatar-cell {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #e63946, #f4a261);
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+  }
+
+  .badge-played   { background:#d1fae5; color:#065f46; border-radius:50px; padding:4px 10px; font-size:0.75rem; font-weight:600; }
+  .badge-pending  { background:#fef3c7; color:#92400e; border-radius:50px; padding:4px 10px; font-size:0.75rem; font-weight:600; }
+
+  .search-box { max-width: 320px; }
+  .search-box .form-control { border-radius: 50px 0 0 50px; border-right: none; }
+  .search-box .btn { border-radius: 0 50px 50px 0; }
+
+  .pagination .page-link {
+    border: none;
+    color: #495057;
+    padding: 0.5rem 0.85rem;
+    border-radius: 8px !important;
+    margin: 0 2px;
+    font-size: 0.88rem;
+    font-weight: 500;
+  }
+  .pagination .page-item.active .page-link {
+    background: #e63946;
+    color: #fff;
+  }
+  .pagination .page-link:hover { background: #f0f0f0; color: #e63946; }
+  .pagination .page-item.active .page-link:hover { background: #c1121f; color: #fff; }  /* ── Flatpickr Calendar ── */
+  .flatpickr-calendar {
+    border-radius: 20px !important;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.18) !important;
+    border: none !important;
+    font-family: 'Segoe UI', sans-serif !important;
+    padding: 16px !important;
+    width: 320px !important;
+  }
+  .flatpickr-months { padding: 0 0 8px !important; }
+  .flatpickr-months .flatpickr-month { background: transparent !important; height: 40px !important; }
+  .flatpickr-current-month {
+    font-size: 1.1rem !important; font-weight: 700;
+    color: #1a1a2e !important; padding-top: 8px !important;
+  }
+  .flatpickr-current-month .flatpickr-monthDropdown-months,
+  .flatpickr-current-month input.cur-year { color: #1a1a2e !important; font-weight: 700 !important; }
+  .flatpickr-months .flatpickr-prev-month,
+  .flatpickr-months .flatpickr-next-month {
+    top: 6px !important; fill: #6c757d !important;
+    background: #f4f6fb !important; border-radius: 10px !important; padding: 6px 10px !important;
+  }
+  .flatpickr-months .flatpickr-prev-month:hover,
+  .flatpickr-months .flatpickr-next-month:hover { background: #e9ecef !important; fill: #1a1a2e !important; }
+  .flatpickr-weekdays {
+    padding: 4px 0 !important;
+    width: 280px !important;
+    margin: 0 auto !important;
+  }
+  .flatpickr-weekday { color: #9ca3af !important; font-weight: 700 !important; font-size: 0.75rem !important; }
+  
+  .dayContainer {
+    padding: 2px 0 4px !important;
+    gap: 0 !important;
+    width: 280px !important;
+    min-width: 280px !important;
+    max-width: 280px !important;
+    margin: 0 auto !important;
+    justify-content: flex-start !important;
+  }
+
+  /* Base day — flat, no border-radius */
+  .flatpickr-day {
+    border-radius: 0 !important;
+    font-size: 0.88rem !important;
+    height: 40px !important;
+    line-height: 40px !important;
+    width: 40px !important;
+    min-width: 40px !important;
+    max-width: 40px !important;
+    flex: 0 0 40px !important;
+    border: none !important;
+    margin: 1px 0 !important;
+    color: #374151;
+    display: inline-block;
+  }
+  .flatpickr-day.prevMonthDay,
+  .flatpickr-day.nextMonthDay { color: #d1d5db !important; }
+  .flatpickr-day:hover:not(.has-reg):not(.selected):not(.inRange) {
+    background: #eef2ff !important; color: #1a1a2e !important;
+  }
+
+  /* has-reg: blue fill, flat sides by default */
+  .flatpickr-day.has-reg {
+    background: #4361ee !important;
+    color: #fff !important;
+    font-weight: 600 !important;
+    border: none !important;
+    border-radius: 0 !important;
+  }
+  .flatpickr-day.has-reg:hover { background: #3651d4 !important; color: #fff !important; }
+
+  /* Left pill cap */
+  .flatpickr-day.has-reg.pill-s { border-radius: 22px 0 0 22px !important; }
+  /* Right pill cap */
+  .flatpickr-day.has-reg.pill-e { border-radius: 0 22px 22px 0 !important; }
+  /* Isolated single date */
+  .flatpickr-day.has-reg.pill-s.pill-e { border-radius: 22px !important; }
+
+  /* Selected date/range — red theme (overrides registration styling when active) */
+  .flatpickr-day.selected,
+  .flatpickr-day.selected:hover,
+  .flatpickr-day.startRange,
+  .flatpickr-day.startRange:hover,
+  .flatpickr-day.endRange,
+  .flatpickr-day.endRange:hover {
+    background: #e63946 !important;
+    border-color: #e63946 !important;
+    color: #fff !important;
+    font-weight: 700 !important;
+    z-index: 2;
+    position: relative;
+  }
+
+  .flatpickr-day.selected {
+    border-radius: 22px !important;
+  }
+
+  .flatpickr-day.startRange {
+    border-radius: 22px 0 0 22px !important;
+  }
+
+  .flatpickr-day.endRange {
+    border-radius: 0 22px 22px 0 !important;
+  }
+
+  .flatpickr-day.startRange.endRange {
+    border-radius: 22px !important;
+  }
+
+  .flatpickr-day.inRange,
+  .flatpickr-day.inRange:hover {
+    background: #ffe3e3 !important;
+    border-color: #ffe3e3 !important;
+    color: #e63946 !important;
+    border-radius: 0 !important;
+  }
+
+  .flatpickr-day.today:not(.selected):not(.startRange):not(.endRange):not(.inRange) { font-weight: 700 !important; text-decoration: underline; }
+
+  .date-filter-btn {
+    border: 2px solid #e9ecef;
+    border-radius: 10px;
+    background: #fff;
+    padding: 0.5rem 1rem;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #495057;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: border-color 0.2s;
+    white-space: nowrap;
+  }
+  .date-filter-btn:hover,
+  .date-filter-btn.active { border-color: #e63946; color: #e63946; }
+  .date-filter-btn.active { background: #fff5f5; }
+
+  @media (max-width: 575px) {
+    .search-box { max-width: 100%; }
+    .flatpickr-calendar {
+      left: 50% !important;
+      transform: translateX(-50%) !important;
+      width: 290px !important;
+    }
+    .dayContainer {
+      width: 252px !important;
+      min-width: 252px !important;
+      max-width: 252px !important;
+    }
+    .flatpickr-weekdays { width: 252px !important; }
+    .flatpickr-day {
+      width: 36px !important;
+      max-width: 36px !important;
+      min-width: 36px !important;
+      height: 36px !important;
+      line-height: 36px !important;
+      flex: 0 0 36px !important;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Date Filter Bar -->
+<div class="card mb-4">
+  <div class="card-body py-3 px-4">
+    <div class="d-flex flex-wrap align-items-center gap-3">
+      <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-calendar3 text-danger fs-5"></i>
+        <span class="fw-semibold" style="color:#1a1a2e;font-size:0.9rem;">Filter by Date</span>
+      </div>
+
+      <!-- Quick filter buttons -->
+      <div class="d-flex flex-wrap gap-2">
+        <a href="?date={{ today_iso }}{% if search_query %}&q={{ search_query }}{% endif %}"
+           class="btn btn-sm {% if not date_filter or date_filter == today_iso %}btn-danger{% else %}btn-outline-secondary{% endif %}"
+           style="border-radius:8px;font-size:0.82rem;">
+          Today
+        </a>
+        <a href="?date={{ yesterday_iso }}{% if search_query %}&q={{ search_query }}{% endif %}"
+           class="btn btn-sm {% if date_filter == yesterday_iso %}btn-danger{% else %}btn-outline-secondary{% endif %}"
+           style="border-radius:8px;font-size:0.82rem;">
+          Yesterday
+        </a>
+      </div>
+
+      <div class="ms-auto d-flex align-items-center gap-2">
+        <!-- Calendar picker: hidden input is the flatpickr target; button triggers it -->
+        <form method="GET" id="dateFilterForm" style="position:relative;">
+          {% if search_query %}<input type="hidden" name="q" value="{{ search_query }}">{% endif %}
+          <!-- Invisible flatpickr input -->
+          <input type="text" id="fpDateInput" name="date"
+                 value="{{ date_filter }}"
+                 style="position:absolute;top:0;left:0;width:0;height:0;opacity:0;pointer-events:none;">
+          <!-- Visible trigger button -->
+          <button type="button" id="calendarTriggerBtn"
+                  class="date-filter-btn {% if date_filter %}active{% endif %}">
+            <i class="bi bi-calendar3 text-danger"></i>
+            {% if date_display %}{{ date_display }}{% else %}Pick a date{% endif %}
+          </button>
+        </form>
+
+        {% if date_filter %}
+        <a href="{% url 'dashboard' %}{% if search_query %}?q={{ search_query }}{% endif %}"
+           class="btn btn-sm btn-outline-danger" style="border-radius:8px;" title="Clear date filter">
+          <i class="bi bi-x-lg"></i> Clear
+        </a>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="mt-2 pt-2 border-top d-flex align-items-center gap-2">
+      <i class="bi bi-funnel-fill text-danger" style="font-size:0.85rem;"></i>
+      <small class="text-muted">
+        Showing registrations for <strong class="text-danger">{% if from_date == to_date %}{{ from_date|date:"l, d F Y" }}{% else %}{{ date_display }}{% endif %}</strong>
+        — {{ total_count }} record{{ total_count|pluralize }} found
+      </small>
+    </div>
+  </div>
+</div>
+
+<!-- Stat Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-12 col-md-6">
+    <div class="stat-card stat-card-green">
+      <div class="stat-icon">🎮</div>
+      <div class="stat-num">{{ played_count }}</div>
+      <div class="stat-label">
+        {% if date_filter %}Played the Game for {{ date_display }}{% else %}Total Played{% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-md-6">
+    <div class="stat-card stat-card-blue">
+      <div class="stat-icon">📅</div>
+      <div class="stat-num">{{ today_count }}</div>
+      <div class="stat-label">Today Played</div>
+    </div>
+  </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row g-3 mb-4">
+
+  <!-- Bar Chart: 7-day window ending on active date -->
+  <div class="col-12">
+    <div class="card chart-card">
+      <div class="card-body p-4">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <div>
+            <h6 class="fw-bold mb-0" style="color:#1a1a2e;">
+              <i class="bi bi-bar-chart-fill text-danger me-2"></i>Daily Registrations
+            </h6>
+            <small class="text-muted">
+              {% if from_date == to_date %}7 days ending {{ from_date|date:"d M Y" }}{% else %}{{ date_display }}{% endif %}
+            </small>
+          </div>
+          <span class="badge bg-danger bg-opacity-10 text-danger" style="border-radius:8px;font-size:0.75rem;">
+            {% if date_filter %}{{ date_display }}{% else %}Today{% endif %}
+          </span>
+        </div>
+        <canvas id="barChart" height="70"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Line Chart: hourly for active date -->
+  <div class="col-12">
+    <div class="card chart-card">
+      <div class="card-body p-4">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <div>
+            <h6 class="fw-bold mb-0" style="color:#1a1a2e;">
+              <i class="bi bi-activity text-danger me-2"></i>Registrations by Hour
+            </h6>
+            <small class="text-muted">Event hours: 9:00 AM – 9:00 PM</small>
+          </div>
+          <span class="badge bg-success bg-opacity-10 text-success d-flex align-items-center gap-1" style="border-radius:8px;font-size:0.75rem;">
+            <span style="width:6px;height:6px;background:#2dc653;border-radius:50%;display:inline-block;"></span>
+            {{ date_display }} &bull; {{ total_count }} total
+          </span>
+        </div>
+        <canvas id="lineChart" height="70"></canvas>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>
+  // ── Flatpickr calendar ─────────────────────────
+  const regDates = {{ registered_dates_json|safe }};
+
+  // applyPillRows works on the FULL DOM grid (all 42 slots including prev/next month days)
+  // so adjacency is positionally correct across week-row boundaries.
+  function applyPillRows() {
+    const all = Array.from(document.querySelectorAll('.flatpickr-day'));
+
+    // Clear existing pill classes
+    all.forEach(function(d) { d.classList.remove('pill-s', 'pill-e'); });
+
+    all.forEach(function(day, i) {
+      // Only apply to current-month has-reg days
+      if (!day.classList.contains('has-reg')) return;
+      if (day.classList.contains('prevMonthDay') || day.classList.contains('nextMonthDay')) return;
+
+      var d = day.dateObj;
+      if (!d) return;
+      var dow = d.getDay(); // 0 = Sun, 6 = Sat
+
+      // Previous slot in the grid (position i-1). It connects only if it is ALSO
+      // a current-month has-reg day (not a prev/next month day).
+      var prev = i > 0 ? all[i - 1] : null;
+      var prevConnects = prev &&
+                         prev.classList.contains('has-reg') &&
+                         !prev.classList.contains('prevMonthDay') &&
+                         !prev.classList.contains('nextMonthDay');
+
+      // Next slot in the grid (position i+1).
+      var next = i < all.length - 1 ? all[i + 1] : null;
+      var nextConnects = next &&
+                         next.classList.contains('has-reg') &&
+                         !next.classList.contains('prevMonthDay') &&
+                         !next.classList.contains('nextMonthDay');
+
+      // Left cap when: first column (Sunday) OR previous slot doesn't connect
+      if (dow === 0 || !prevConnects) day.classList.add('pill-s');
+      // Right cap when: last column (Saturday) OR next slot doesn't connect
+      if (dow === 6 || !nextConnects) day.classList.add('pill-e');
+    });
+  }
+
+  var fpInst = flatpickr('#fpDateInput', {
+    disableMobile: true,
+    mode: 'range',
+    dateFormat: 'Y-m-d',
+    defaultDate: '{{ date_filter }}' || null,
+    maxDate: 'today',
+    onDayCreate: function(dObj, dStr, fp, dayElem) {
+      var d = dayElem.dateObj;
+      if (!d) return;
+      if (dayElem.classList.contains('prevMonthDay') || dayElem.classList.contains('nextMonthDay')) return;
+      var iso = d.getFullYear() + '-'
+        + String(d.getMonth() + 1).padStart(2, '0') + '-'
+        + String(d.getDate()).padStart(2, '0');
+      if (regDates.indexOf(iso) !== -1) {
+        dayElem.classList.add('has-reg');
+      }
+    },
+    onReady:       function() { setTimeout(applyPillRows, 0); },
+    onMonthChange: function() { setTimeout(applyPillRows, 0); },
+    onYearChange:  function() { setTimeout(applyPillRows, 0); },
+    onChange: function(selectedDates, dateStr) {
+      if (selectedDates.length === 2) {
+        document.getElementById('dateFilterForm').submit();
+      }
+    },
+    onClose: function(selectedDates, dateStr) {
+      if (selectedDates.length === 1) {
+        document.getElementById('dateFilterForm').submit();
+      }
+    }
+  });
+
+  document.getElementById('calendarTriggerBtn').addEventListener('click', function(e) {
+    e.preventDefault();
+    fpInst.open();
+  });
+</script>
+<script>
+  const chartLabels  = {{ chart_labels|safe }};
+  const chartData    = {{ chart_data|safe }};
+  const hourlyLabels = {{ hourly_labels|safe }};
+  const hourlyData   = {{ hourly_data|safe }};
+
+  // ── Bar Chart ──────────────────────────────────
+  new Chart(document.getElementById('barChart'), {
+    type: 'bar',
+    data: {
+      labels: chartLabels,
+      datasets: [{
+        label: 'Registrations',
+        data: chartData,
+        backgroundColor: chartData.map((_, i) =>
+          i === chartData.length - 1 ? '#e63946' : 'rgba(230,57,70,0.18)'
+        ),
+        borderColor: '#e63946',
+        borderWidth: 2,
+        borderRadius: 8,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1a1a2e',
+          titleColor: '#fff',
+          bodyColor: 'rgba(255,255,255,0.75)',
+          padding: 10,
+          cornerRadius: 8,
+          callbacks: {
+            label: ctx => ` ${ctx.parsed.y} customer${ctx.parsed.y !== 1 ? 's' : ''}`
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { font: { size: 11 }, color: '#9ca3af' }
+        },
+        y: {
+          beginAtZero: true,
+          ticks: {
+            precision: 0,
+            font: { size: 11 },
+            color: '#9ca3af'
+          },
+          grid: { color: '#f3f4f6' }
+        }
+      }
+    }
+  });
+
+  // ── Line Chart: Today by Hour ──────────────────
+  const lineCtx = document.getElementById('lineChart').getContext('2d');
+
+  // Gradient fill under the line
+  const gradient = lineCtx.createLinearGradient(0, 0, 0, 220);
+  gradient.addColorStop(0, 'rgba(230,57,70,0.25)');
+  gradient.addColorStop(1, 'rgba(230,57,70,0)');
+
+  new Chart(lineCtx, {
+    type: 'line',
+    data: {
+      labels: hourlyLabels,
+      datasets: [{
+        label: 'Registrations',
+        data: hourlyData,
+        borderColor: '#e63946',
+        borderWidth: 2.5,
+        backgroundColor: gradient,
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: '#e63946',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1a1a2e',
+          titleColor: '#fff',
+          bodyColor: 'rgba(255,255,255,0.8)',
+          padding: 10,
+          cornerRadius: 8,
+          callbacks: {
+            title: ctx => `Time: ${ctx[0].label}`,
+            label: ctx => ` ${ctx.parsed.y} registration${ctx.parsed.y !== 1 ? 's' : ''}`
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { font: { size: 11 }, color: '#9ca3af' }
+        },
+        y: {
+          beginAtZero: true,
+          ticks: { precision: 0, font: { size: 11 }, color: '#9ca3af' },
+          grid: { color: '#f3f4f6' }
+        }
+      }
+    }
+  });
+</script>
+{% endblock %}

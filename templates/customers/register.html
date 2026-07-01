@@ -1,0 +1,426 @@
+{% extends 'base.html' %}
+
+{% block title %}Register Customer — FIFA Event Game{% endblock %}
+{% block page_title %}Register Customer{% endblock %}
+{% block page_subtitle %}Enter customer details to join the event{% endblock %}
+{% block nav_register %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* ── Page Layout ── */
+  .reg-wrap {
+    max-width: 900px;
+    margin: 2.5rem auto 5rem;
+    padding: 0 1.5rem;
+  }
+
+  /* ── Sleek Card Container ── */
+  .reg-card {
+    background: #ffffff;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    border-top: 4px solid #2563eb; /* Top Accent Bar */
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03), 0 1px 3px rgba(0, 0, 0, 0.01);
+    padding: 2.5rem;
+  }
+
+  /* ── Section Title ── */
+  .section-title {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #1e3a8a;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    position: relative;
+    padding-left: 1rem;
+    margin-bottom: 2rem;
+    line-height: 1.2;
+    display: flex;
+    align-items: center;
+  }
+  .section-title::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 5px;
+    height: 20px;
+    background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%);
+    border-radius: 2px;
+  }
+
+  /* ── Form Labels ── */
+  .form-label-custom {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    margin-bottom: 0.65rem;
+    display: block;
+    letter-spacing: 0.5px;
+  }
+
+  /* ── Unified Input Wrappers ── */
+  .input-icon-wrapper,
+  .input-group-custom {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    background-color: #ffffff;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 8px;
+    height: 52px;
+    padding: 0 1.1rem;
+    transition: all 0.2s ease-in-out;
+  }
+
+  .input-icon-wrapper:hover,
+  .input-group-custom:hover {
+    border-color: #94a3b8;
+  }
+
+  .input-icon-wrapper:focus-within,
+  .input-group-custom:focus-within {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.08);
+  }
+
+  /* Error states using parent target */
+  .input-icon-wrapper:has(.is-invalid),
+  .input-group-custom:has(.is-invalid) {
+    border-color: #ef4444 !important;
+    background-color: #fffafb;
+  }
+
+  /* Icons */
+  .input-icon-wrapper .input-icon,
+  .input-group-custom .input-icon-left {
+    color: #94a3b8;
+    font-size: 1.3rem;
+    margin-right: 0.75rem;
+    flex-shrink: 0;
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  .input-group-custom .input-group-text {
+    border: none;
+    background: transparent;
+    padding: 0;
+    margin-right: 0.6rem;
+    font-weight: 700;
+    color: #475569;
+    font-size: 1.05rem;
+    user-select: none;
+  }
+
+  /* Custom inputs nested inside wrappers */
+  .form-control-custom {
+    border: none !important;
+    padding: 0 !important;
+    font-size: 1.05rem;
+    font-weight: 500;
+    background: transparent !important;
+    border-radius: 0 !important;
+    height: 100% !important;
+    color: #1e293b;
+    width: 100%;
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
+  .form-control-custom::placeholder {
+    color: #94a3b8 !important;
+    opacity: 1 !important;
+  }
+
+  /* Status Tick positioning */
+  .input-wrap-inner {
+    flex: 1;
+    position: relative;
+    height: 100%;
+    display: flex;
+    align-items: center;
+  }
+
+  .field-status {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.1rem;
+    z-index: 5;
+    pointer-events: none;
+  }
+
+  /* Hints and Errors */
+  .field-hint {
+    font-size: 0.82rem;
+    color: #64748b;
+    margin-top: 0.4rem;
+    padding-left: 0.1rem;
+  }
+
+  .field-error {
+    font-size: 0.88rem;
+    color: #ef4444;
+    margin-top: 0.4rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding-left: 0.1rem;
+  }
+
+  /* ── Stripe-Style Rules Alert Box ── */
+  .rule-box {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid #f59e0b; /* Amber left indicator */
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    font-size: 0.92rem;
+    color: #334155;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 1.75rem;
+  }
+
+  /* ── Submit Button ── */
+  .btn-submit {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    border: none;
+    border-radius: 8px;
+    height: 52px;
+    padding: 0 2rem;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #ffffff;
+    transition: all 0.2s ease-in-out;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+  }
+  .btn-submit:hover {
+    background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.25);
+    color: #ffffff;
+  }
+  .btn-submit:active {
+    transform: translateY(0);
+  }
+  .btn-submit:disabled {
+    background: #cbd5e1;
+    box-shadow: none;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  @media (max-width: 575px) {
+    .reg-wrap { margin: 1.25rem auto 3rem; padding: 0 0.5rem; }
+    .reg-card { padding: 1.5rem 1.25rem; }
+    .btn-submit { width: 100%; justify-content: center; }
+    .d-flex.justify-content-end { justify-content: stretch !important; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="reg-wrap">
+
+  <!-- Card -->
+  <div class="reg-card">
+
+    <!-- Section Title -->
+    <div class="section-title">
+      1. Customer Information
+    </div>
+
+    <!-- Form Body -->
+    <form method="POST" id="registrationForm" novalidate autocomplete="off">
+      {% csrf_token %}
+
+      <!-- 2 Rows, 2 Columns (2x2 Grid) -->
+      <div class="row g-4">
+        
+        <!-- Row 1, Column 1: Full Name -->
+        <div class="col-12 col-md-6">
+          <label for="id_name" class="form-label-custom">Full Name</label>
+          <div class="input-icon-wrapper">
+            <i class="bi bi-person input-icon"></i>
+            <input type="text" id="id_name" name="name" class="form-control-custom"
+                   placeholder="Enter full name"
+                   value="{{ form.name.value|default:'' }}" autofocus required />
+          </div>
+          {% if form.name.errors %}
+            <div class="field-error">
+              <i class="bi bi-exclamation-circle-fill"></i>{{ form.name.errors|join:", " }}
+            </div>
+          {% endif %}
+        </div>
+
+        <!-- Row 1, Column 2: Mobile Number -->
+        <div class="col-12 col-md-6">
+          <label for="id_mobile_number" class="form-label-custom">Mobile Number</label>
+          <div class="input-group-custom">
+            <i class="bi bi-telephone input-icon-left"></i>
+            <span class="input-group-text">+91</span>
+            <div class="input-wrap-inner">
+              <input type="tel" id="id_mobile_number" name="mobile_number" class="form-control-custom"
+                     placeholder="Enter mobile number" maxlength="10"
+                     pattern="[0-9]{10}" inputmode="numeric"
+                     value="{{ form.mobile_number.value|default:'' }}" required />
+              <div class="field-status" id="mobile-status"></div>
+            </div>
+          </div>
+          <div id="mobile-error" class="field-error" style="display:none;"></div>
+          {% if form.mobile_number.errors %}
+            <div class="field-error">
+              <i class="bi bi-exclamation-circle-fill"></i>{{ form.mobile_number.errors|join:", " }}
+            </div>
+          {% endif %}
+          <div class="field-hint">
+            Without country code
+          </div>
+        </div>
+
+        <!-- Row 2, Column 1: Aadhar Number -->
+        <div class="col-12 col-md-6">
+          <label for="id_aadhar_number" class="form-label-custom">Aadhar Number</label>
+          <div class="input-icon-wrapper">
+            <i class="bi bi-card-text input-icon"></i>
+            <div class="input-wrap-inner">
+              <input type="tel" id="id_aadhar_number" name="aadhar_number" class="form-control-custom"
+                     placeholder="Enter Aadhar number" maxlength="12"
+                     pattern="[0-9]{12}" inputmode="numeric"
+                     value="{{ form.aadhar_number.value|default:'' }}" required />
+              <div class="field-status" id="aadhar-status"></div>
+            </div>
+          </div>
+          <div id="aadhar-error" class="field-error" style="display:none;"></div>
+          {% if form.aadhar_number.errors %}
+            <div class="field-error">
+              <i class="bi bi-exclamation-circle-fill"></i>{{ form.aadhar_number.errors|join:", " }}
+            </div>
+          {% endif %}
+          <div class="field-hint">
+            12-digit UIDAI number
+          </div>
+        </div>
+
+        <!-- Row 2, Column 2: Bill Number -->
+        <div class="col-12 col-md-6">
+          <label for="id_bill_number" class="form-label-custom">Bill / Invoice Number</label>
+          <div class="input-icon-wrapper">
+            <i class="bi bi-receipt input-icon"></i>
+            <div class="input-wrap-inner">
+              <input type="text" id="id_bill_number" name="bill_number" class="form-control-custom"
+                     placeholder="Enter bill number"
+                     value="{{ form.bill_number.value|default:'' }}" required />
+              <div class="field-status" id="bill-status"></div>
+            </div>
+          </div>
+          <div id="bill-error" class="field-error" style="display:none;"></div>
+          {% if form.bill_number.errors %}
+            <div class="field-error">
+              <i class="bi bi-exclamation-circle-fill"></i>{{ form.bill_number.errors|join:", " }}
+            </div>
+          {% endif %}
+          <div class="field-hint">
+            From the purchase receipt
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Rules Box -->
+      <div class="rule-box">
+        <i class="bi bi-exclamation-triangle-fill fs-6 flex-shrink-0 text-warning"></i>
+        <div>
+          <strong>Important Rule:</strong> Each mobile number, Aadhar number, and bill number can be used only once.
+        </div>
+      </div>
+
+      <!-- Submit Actions -->
+      <div class="d-flex justify-content-end mt-4">
+        <button type="submit" class="btn-submit" id="submitBtn">
+          <i class="bi bi-play-circle-fill"></i> Register &amp; Enter the Game
+        </button>
+      </div>
+
+    </form>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function setupDuplicateCheck(inputId, statusId, errorId, fieldName) {
+    const input  = document.getElementById(inputId);
+    const status = document.getElementById(statusId);
+    const error  = document.getElementById(errorId);
+    if (!input) return;
+    let timer;
+    input.addEventListener('input', function () {
+      clearTimeout(timer);
+      const val = this.value.trim();
+      status.innerHTML = '';
+      error.style.display = 'none';
+      input.classList.remove('is-invalid');
+      
+      if (val.length < 3) return;
+      status.innerHTML = '<span class="spinner-border spinner-border-sm text-secondary" style="width:12px;height:12px;"></span>';
+      timer = setTimeout(() => {
+        fetch(`/check-duplicate/?field=${fieldName}&value=${encodeURIComponent(val)}`)
+          .then(r => r.json())
+          .then(data => {
+            if (data.exists) {
+              status.innerHTML = '<i class="bi bi-x-circle-fill text-danger"></i>';
+              error.innerHTML = '<i class="bi bi-exclamation-circle"></i> Already registered.';
+              error.style.display = 'flex';
+              input.classList.add('is-invalid');
+            } else {
+              status.innerHTML = '<i class="bi bi-check-circle-fill text-success"></i>';
+              error.style.display = 'none';
+              input.classList.remove('is-invalid');
+            }
+          })
+          .catch(() => { status.innerHTML = ''; });
+      }, 450);
+    });
+  }
+
+  setupDuplicateCheck('id_mobile_number', 'mobile-status', 'mobile-error', 'mobile_number');
+  setupDuplicateCheck('id_aadhar_number', 'aadhar-status', 'aadhar-error', 'aadhar_number');
+  setupDuplicateCheck('id_bill_number',   'bill-status',   'bill-error',   'bill_number');
+
+  ['id_mobile_number', 'id_aadhar_number'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('keypress', function (e) {
+        if (!/[0-9]/.test(e.key) && !['Backspace','Tab','Enter','ArrowLeft','ArrowRight','Delete'].includes(e.key)) {
+          e.preventDefault();
+        }
+      });
+    }
+  });
+
+  const form = document.getElementById('registrationForm');
+  if (form) {
+    form.addEventListener('submit', function () {
+      const btn = document.getElementById('submitBtn');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Registering...';
+      }
+    });
+  }
+</script>
+{% endblock %}
