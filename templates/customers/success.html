@@ -116,6 +116,28 @@
     pointer-events: none;
     z-index: 9999;
   }
+
+  .result-banner {
+    border-radius: 12px;
+    padding: 1.1rem 1.25rem;
+    margin-bottom: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+  }
+  .result-banner.win {
+    background: linear-gradient(135deg, #fff7e0, #ffedb3);
+    border: 1.5px solid #f4c430;
+  }
+  .result-banner.loss {
+    background: #f4f6fb;
+    border: 1.5px solid #e2e8f0;
+  }
+  .result-banner .result-icon { font-size: 2rem; flex-shrink: 0; }
+  .result-banner .result-title { font-weight: 800; font-size: 1.05rem; margin-bottom: 0.15rem; }
+  .result-banner.win .result-title { color: #92610a; }
+  .result-banner.loss .result-title { color: #475569; }
+  .result-banner .result-sub { font-size: 0.88rem; color: #6c757d; }
 </style>
 {% endblock %}
 
@@ -133,6 +155,25 @@
     </div>
 
     <div class="card-body p-4">
+
+      <!-- Game Result -->
+      {% if customer.game_result == 'win' %}
+      <div class="result-banner win">
+        <div class="result-icon">🎁</div>
+        <div>
+          <div class="result-title">Congratulations, You Won!</div>
+          <div class="result-sub">{{ customer.won_gift.name|default:"Gift will be confirmed at the counter" }}</div>
+        </div>
+      </div>
+      {% elif customer.game_result == 'loss' %}
+      <div class="result-banner loss">
+        <div class="result-icon">🎁</div>
+        <div>
+          <div class="result-title">Complimentary Prize</div>
+          <div class="result-sub">{{ customer.gift_display }} — for all participants.</div>
+        </div>
+      </div>
+      {% endif %}
 
       <!-- Token / Entry Card -->
       <p class="text-muted small mb-2 d-flex align-items-center gap-1">

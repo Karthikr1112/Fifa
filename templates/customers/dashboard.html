@@ -291,22 +291,36 @@
   </div>
 </div>
 
-<!-- Stat Cards -->
+<!-- Stat Cards (Four Cards in One Line) -->
 <div class="row g-3 mb-4">
-  <div class="col-12 col-md-6">
+  <div class="col-12 col-sm-6 col-lg-3">
     <div class="stat-card stat-card-green">
       <div class="stat-icon">🎮</div>
       <div class="stat-num">{{ played_count }}</div>
       <div class="stat-label">
-        {% if date_filter %}Played the Game for {{ date_display }}{% else %}Total Played{% endif %}
+        {% if date_filter %}Played for {{ date_display }}{% else %}Total Played{% endif %}
       </div>
     </div>
   </div>
-  <div class="col-12 col-md-6">
+  <div class="col-12 col-sm-6 col-lg-3">
     <div class="stat-card stat-card-blue">
       <div class="stat-icon">📅</div>
       <div class="stat-num">{{ today_count }}</div>
       <div class="stat-label">Today Played</div>
+    </div>
+  </div>
+  <div class="col-12 col-sm-6 col-lg-3">
+    <div class="stat-card stat-card-orange">
+      <div class="stat-icon">🏆</div>
+      <div class="stat-num">{{ winners_count }}</div>
+      <div class="stat-label">Total Winners</div>
+    </div>
+  </div>
+  <div class="col-12 col-sm-6 col-lg-3">
+    <div class="stat-card stat-card-red">
+      <div class="stat-icon">😕</div>
+      <div class="stat-num">{{ losers_count }}</div>
+      <div class="stat-label">Total Loss</div>
     </div>
   </div>
 </div>
@@ -353,6 +367,25 @@
           </span>
         </div>
         <canvas id="lineChart" height="70"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Gift Distribution Chart (Full Width) -->
+  <div class="col-12">
+    <div class="card chart-card">
+      <div class="card-body p-4">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <div>
+            <h6 class="fw-bold mb-0" style="color:#1a1a2e;">
+              <i class="bi bi-gift-fill text-danger me-2"></i>Gifts Win Count
+            </h6>
+            <small class="text-muted">Prizes won breakdown for {{ date_display }}</small>
+          </div>
+        </div>
+        <div style="height: 250px; position: relative;">
+          <canvas id="giftChart"></canvas>
+        </div>
       </div>
     </div>
   </div>
@@ -461,7 +494,7 @@
         label: 'Registrations',
         data: chartData,
         backgroundColor: chartData.map((_, i) =>
-          i === chartData.length - 1 ? '#e63946' : 'rgba(230,57,70,0.18)'
+          i === chartData.length - 1 ? '#e63946' : 'rgba(230,57,70,0.55)'
         ),
         borderColor: '#e63946',
         borderWidth: 2,
@@ -557,6 +590,60 @@
         }
       }
     }
+  });
+
+  // ── Gift Chart: Prizes Won Breakdown ───────────
+  const giftLabels = {{ gift_labels|safe }};
+  const giftData   = {{ gift_data|safe }};
+
+  new Chart(document.getElementById('giftChart'), {
+    type: 'bar',
+    data: {
+      labels: giftLabels,
+      datasets: [{
+        label: 'Wins',
+        data: giftData,
+        backgroundColor: giftLabels.map(l => l.includes('Complimentary') ? '#e76f51' : '#1d3557'),
+        borderColor: giftLabels.map(l => l.includes('Complimentary') ? '#e76f51' : '#1d3557'),
+        borderWidth: 1,
+        borderRadius: 4,
+        barThickness: 12
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1a1a2e',
+          titleColor: '#fff',
+          bodyColor: 'rgba(255,255,255,0.8)',
+          padding: 10,
+          cornerRadius: 8
+        }
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          grid: { color: '#f3f4f6' },
+          ticks: { font: { size: 10, weight: '600' }, color: '#1a1a2e', precision: 0 }
+        },
+        y: {
+          grid: { display: false },
+          ticks: { font: { size: 11, weight: '600' }, color: '#1a1a2e' }
+        }
+      }
+    }
+  });
+
+  // Initialize Bootstrap tooltips
+  document.addEventListener('DOMContentLoaded', function () {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+      return new bootstrap.Tooltip(tooltipTriggerEl)
+    })
   });
 </script>
 {% endblock %}

@@ -13,7 +13,31 @@ aadhar_validator = RegexValidator(
 )
 
 
+class Gift(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['name']
+        verbose_name = 'Gift'
+        verbose_name_plural = 'Gifts'
+
+    def __str__(self):
+        return self.name
+
+
 class Customer(models.Model):
+    RESULT_PENDING = 'pending'
+    RESULT_WIN = 'win'
+    RESULT_LOSS = 'loss'
+    RESULT_CHOICES = [
+        (RESULT_PENDING, 'Pending'),
+        (RESULT_WIN, 'Win'),
+        (RESULT_LOSS, 'Loss'),
+    ]
+
+    CONSOLATION_GIFT = 'Pay ₹1000 & Get Services Worth ₹1500 Gift Voucher'
+
     name = models.CharField(max_length=100)
     mobile_number = models.CharField(
         max_length=10,
@@ -34,6 +58,18 @@ class Customer(models.Model):
     )
     registered_at = models.DateTimeField(auto_now_add=True)
     has_played = models.BooleanField(default=False)
+    game_result = models.CharField(
+        max_length=10,
+        choices=RESULT_CHOICES,
+        default=RESULT_PENDING,
+    )
+    won_gift = models.ForeignKey(
+        Gift,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='winners',
+    )
 
     class Meta:
         ordering = ['-registered_at']
@@ -54,3 +90,11 @@ class Customer(models.Model):
     def mask_aadhar(self):
         """Return Aadhar with only last 4 digits visible."""
         return 'XXXX-XXXX-' + self.aadhar_number[-4:]
+
+    @property
+    def gift_display(self):
+        if self.game_result == self.RESULT_WIN:
+            return self.won_gift.name if self.won_gift else ''
+        if self.game_result == self.RESULT_LOSS:
+            return self.CONSOLATION_GIFT
+        return ''

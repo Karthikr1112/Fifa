@@ -8,6 +8,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY')
 DEBUG       = config('DEBUG', default=False, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='127.0.0.1,localhost', cast=Csv())
+USE_X_FORWARDED_HOST = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # ── Apps ──────────────────────────────────────────────────────────────────────
 INSTALLED_APPS = [
@@ -54,32 +56,15 @@ TEMPLATES = [
 WSGI_APPLICATION = 'price_project.wsgi.application'
 
 # ── Database ──────────────────────────────────────────────────────────────────
-DATABASE_ENGINE = config('DB_ENGINE', default='django.db.backends.mysql')
-
-if DATABASE_ENGINE == 'django.db.backends.mysql':
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.mysql',
-            'NAME': config('DB_NAME', default='fifa'),
-            'USER': config('DB_USER', default='mis_user'),
-            'PASSWORD': config('DB_PASSWORD', default='Mis$2727'),
-            'HOST': config('DB_HOST', default='192.168.2.29'),
-            'PORT': config('DB_PORT', default='3306'),
-            'OPTIONS': {
-                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-            }
-        }
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+        'OPTIONS': {
+            'timeout': 20,  # seconds before "database is locked" error
+        },
     }
-else:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-            'OPTIONS': {
-                'timeout': 20,  # seconds before "database is locked" error
-            },
-        }
-    }
+}
 
 # ── Password Validation ───────────────────────────────────────────────────────
 AUTH_PASSWORD_VALIDATORS = [
@@ -96,10 +81,16 @@ USE_I18N      = True
 USE_TZ        = True
 
 # ── Static Files ──────────────────────────────────────────────────────────────
-STATIC_URL    = '/static/'
-STATICFILES_DIRS = [BASE_DIR / 'static']
+STATIC_URL = '/static/'
+
+STATIC_DIR = BASE_DIR / 'static'
+if STATIC_DIR.exists() and STATIC_DIR.is_dir():
+    STATICFILES_DIRS = [STATIC_DIR]
+else:
+    STATICFILES_DIRS = []
+
 STATIC_ROOT   = BASE_DIR / 'staticfiles'
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
 
 # ── Cache (rate-limiting for check_duplicate) ─────────────────────────────────
 CACHES = {

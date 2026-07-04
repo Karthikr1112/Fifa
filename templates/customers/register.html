@@ -347,6 +347,62 @@
         </div>
       </div>
 
+      <!-- Section Title -->
+      <div class="section-title mt-4">
+        2. Game Result
+      </div>
+
+      <div class="row g-4">
+
+        <!-- Game Result -->
+        <div class="col-12 col-md-6">
+          <label for="id_game_result" class="form-label-custom">Win or Loss</label>
+          <div class="input-icon-wrapper">
+            <i class="bi bi-trophy input-icon"></i>
+            <select id="id_game_result" name="game_result" class="form-control-custom">
+              <option value="pending" {% if form.game_result.value == 'pending' or not form.game_result.value %}selected{% endif %}>Pending</option>
+              <option value="win" {% if form.game_result.value == 'win' %}selected{% endif %}>Win</option>
+              <option value="loss" {% if form.game_result.value == 'loss' %}selected{% endif %}>Loss</option>
+            </select>
+          </div>
+          {% if form.game_result.errors %}
+            <div class="field-error">
+              <i class="bi bi-exclamation-circle-fill"></i>{{ form.game_result.errors|join:", " }}
+            </div>
+          {% endif %}
+        </div>
+
+        <!-- Gift (shown only when Win) -->
+        <div class="col-12 col-md-6" id="giftFieldWrap" style="{% if form.game_result.value != 'win' %}display:none;{% endif %}">
+          <label for="id_won_gift" class="form-label-custom">Select Gift</label>
+          <div class="input-icon-wrapper">
+            <i class="bi bi-gift input-icon"></i>
+            <select id="id_won_gift" name="won_gift" class="form-control-custom">
+              <option value="">Select gift…</option>
+              {% for gift in gifts %}
+                <option value="{{ gift.pk }}" {% if form.won_gift.value|stringformat:"s" == gift.pk|stringformat:"s" %}selected{% endif %}>{{ gift.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          {% if form.won_gift.errors %}
+            <div class="field-error">
+              <i class="bi bi-exclamation-circle-fill"></i>{{ form.won_gift.errors|join:", " }}
+            </div>
+          {% endif %}
+        </div>
+
+        <!-- Complimentary gift note (shown only when Loss) -->
+        <div class="col-12" id="lossGiftNote" style="{% if form.game_result.value != 'loss' %}display:none;{% endif %}">
+          <div class="rule-box" style="border-left-color:#2563eb;">
+            <i class="bi bi-gift-fill fs-6 flex-shrink-0 text-primary"></i>
+            <div>
+              <strong>Complimentary Prize:</strong> {{ consolation_gift }} — for all participants.
+            </div>
+          </div>
+        </div>
+
+      </div>
+
       <!-- Submit Actions -->
       <div class="d-flex justify-content-end mt-4">
         <button type="submit" class="btn-submit" id="submitBtn">
@@ -378,7 +434,7 @@
       if (val.length < 3) return;
       status.innerHTML = '<span class="spinner-border spinner-border-sm text-secondary" style="width:12px;height:12px;"></span>';
       timer = setTimeout(() => {
-        fetch(`/check-duplicate/?field=${fieldName}&value=${encodeURIComponent(val)}`)
+        fetch(`{% url 'check_duplicate' %}?field=${fieldName}&value=${encodeURIComponent(val)}`)
           .then(r => r.json())
           .then(data => {
             if (data.exists) {
@@ -400,6 +456,24 @@
   setupDuplicateCheck('id_mobile_number', 'mobile-status', 'mobile-error', 'mobile_number');
   setupDuplicateCheck('id_aadhar_number', 'aadhar-status', 'aadhar-error', 'aadhar_number');
   setupDuplicateCheck('id_bill_number',   'bill-status',   'bill-error',   'bill_number');
+
+  const gameResultSelect = document.getElementById('id_game_result');
+  const giftFieldWrap    = document.getElementById('giftFieldWrap');
+  const giftSelect       = document.getElementById('id_won_gift');
+  const lossGiftNote     = document.getElementById('lossGiftNote');
+  if (gameResultSelect && giftFieldWrap) {
+    gameResultSelect.addEventListener('change', function () {
+      if (this.value === 'win') {
+        giftFieldWrap.style.display = '';
+      } else {
+        giftFieldWrap.style.display = 'none';
+        giftSelect.value = '';
+      }
+      if (lossGiftNote) {
+        lossGiftNote.style.display = this.value === 'loss' ? '' : 'none';
+      }
+    });
+  }
 
   ['id_mobile_number', 'id_aadhar_number'].forEach(id => {
     const el = document.getElementById(id);

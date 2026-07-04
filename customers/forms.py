@@ -1,11 +1,11 @@
 from django import forms
-from .models import Customer
+from .models import Customer, Gift
 
 
 class CustomerRegistrationForm(forms.ModelForm):
     class Meta:
         model = Customer
-        fields = ['name', 'mobile_number', 'aadhar_number', 'bill_number']
+        fields = ['name', 'mobile_number', 'aadhar_number', 'bill_number', 'game_result', 'won_gift']
         widgets = {
             'name': forms.TextInput(attrs={
                 'class': 'form-control form-control-lg',
@@ -30,13 +30,33 @@ class CustomerRegistrationForm(forms.ModelForm):
                 'class': 'form-control form-control-lg',
                 'placeholder': 'Bill / Invoice number',
             }),
+            'game_result': forms.Select(attrs={'class': 'form-select form-select-lg'}),
+            'won_gift': forms.Select(attrs={'class': 'form-select form-select-lg'}),
         }
         labels = {
             'name': 'Customer Name',
             'mobile_number': 'Mobile Number',
             'aadhar_number': 'Aadhar Number',
             'bill_number': 'Bill Number',
+            'game_result': 'Game Result',
+            'won_gift': 'Gift',
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['game_result'].required = False
+        self.fields['won_gift'].required = False
+        self.fields['won_gift'].queryset = Gift.objects.filter(is_active=True)
+
+    def clean(self):
+        cleaned_data = super().clean()
+        game_result = cleaned_data.get('game_result')
+        won_gift = cleaned_data.get('won_gift')
+        if game_result == Customer.RESULT_WIN and not won_gift:
+            self.add_error('won_gift', 'Please select a gift for a winning customer.')
+        if game_result != Customer.RESULT_WIN:
+            cleaned_data['won_gift'] = None
+        return cleaned_data
 
     def clean_mobile_number(self):
         mobile = self.cleaned_data.get('mobile_number', '').strip()

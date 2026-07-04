@@ -1,5 +1,6 @@
 import io
 import json
+import datetime
 from datetime import timedelta
 
 from django.shortcuts import render, redirect, get_object_or_404
@@ -15,7 +16,7 @@ import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
-from .models import Customer
+from .models import Customer, Gift
 from .forms import CustomerRegistrationForm
 from .decorators import admin_required
 
@@ -34,7 +35,12 @@ def register(request):
     else:
         form = CustomerRegistrationForm()
 
-    return render(request, 'customers/register.html', {'form': form})
+    gifts = Gift.objects.filter(is_active=True)
+    return render(request, 'customers/register.html', {
+        'form': form,
+        'gifts': gifts,
+        'consolation_gift': Customer.CONSOLATION_GIFT,
+    })
 
 
 @login_required
@@ -52,7 +58,7 @@ def dashboard(request):
     search_query = request.GET.get('q', '').strip()
     date_filter  = request.GET.get('date', '').strip()
 
-    today = timezone.now().date()
+    today = timezone.localtime(timezone.now()).date()
     yesterday = today - timedelta(days=1)
 
     # Resolve selected date range or single date
@@ -83,13 +89,24 @@ def dashboard(request):
     else:
         date_display = f"{from_date.strftime('%d %b %Y')} to {to_date.strftime('%d %b %Y')}"
 
+    # Build local time zone aware datetimes for filtering (avoiding database CONVERT_TZ reliance)
+    today_start = timezone.make_aware(datetime.datetime.combine(today, datetime.time.min))
+    today_end = timezone.make_aware(datetime.datetime.combine(today, datetime.time.max))
+
+    from_datetime = timezone.make_aware(datetime.datetime.combine(from_date, datetime.time.min))
+    to_datetime = timezone.make_aware(datetime.datetime.combine(to_date, datetime.time.max))
+
     # Single aggregation query for all stat card counts
     agg = Customer.objects.aggregate(
         total_all=Count('id'),
         played_all=Count(Case(When(has_played=True, then=1), output_field=IntegerField())),
-        today=Count(Case(When(registered_at__date=today, then=1), output_field=IntegerField())),
-        filtered_total=Count(Case(When(registered_at__date__gte=from_date, registered_at__date__lte=to_date, then=1), output_field=IntegerField())),
-        filtered_played=Count(Case(When(registered_at__date__gte=from_date, registered_at__date__lte=to_date, has_played=True, then=1), output_field=IntegerField())),
+        today=Count(Case(When(registered_at__gte=today_start, registered_at__lte=today_end, then=1), output_field=IntegerField())),
+        filtered_total=Count(Case(When(registered_at__gte=from_datetime, registered_at__lte=to_datetime, then=1), output_field=IntegerField())),
+        filtered_played=Count(Case(When(registered_at__gte=from_datetime, registered_at__lte=to_datetime, has_played=True, then=1), output_field=IntegerField())),
+        winners_all=Count(Case(When(game_result=Customer.RESULT_WIN, then=1), output_field=IntegerField())),
+        losers_all=Count(Case(When(game_result=Customer.RESULT_LOSS, then=1), output_field=IntegerField())),
+        filtered_win=Count(Case(When(registered_at__gte=from_datetime, registered_at__lte=to_datetime, game_result=Customer.RESULT_WIN, then=1), output_field=IntegerField())),
+        filtered_loss=Count(Case(When(registered_at__gte=from_datetime, registered_at__lte=to_datetime, game_result=Customer.RESULT_LOSS, then=1), output_field=IntegerField())),
     )
 
     if date_filter:
@@ -98,7 +115,11 @@ def dashboard(request):
     else:
         total_count  = agg['total_all']
         played_count = agg['played_all']
-    today_count = agg['today']
+    today_count      = agg['today']
+    winners_count    = agg['winners_all']
+    losers_count     = agg['losers_all']
+    filtered_win_count  = agg['filtered_win']
+    filtered_loss_count = agg['filtered_loss']
 
     # Bar chart: 7-day window or selected range
     if from_date == to_date:
@@ -108,16 +129,21 @@ def dashboard(request):
         start_date = from_date
         end_date = to_date
 
+    start_datetime = timezone.make_aware(datetime.datetime.combine(start_date, datetime.time.min))
+    end_datetime = timezone.make_aware(datetime.datetime.combine(end_date, datetime.time.max))
+
     daily_qs = (
         Customer.objects
-        .filter(registered_at__date__gte=start_date,
-                registered_at__date__lte=end_date)
-        .annotate(date=TruncDate('registered_at'))
-        .values('date')
-        .annotate(count=Count('id'))
-        .order_by('date')
+        .filter(registered_at__gte=start_datetime, registered_at__lte=end_datetime)
+        .values_list('registered_at', flat=True)
     )
-    daily_map = {row['date'].strftime('%d %b'): row['count'] for row in daily_qs if row['date']}
+    daily_map = {}
+    for dt in daily_qs:
+        if dt:
+            local_dt = timezone.localtime(dt)
+            label = local_dt.strftime('%d %b')
+            daily_map[label] = daily_map.get(label, 0) + 1
+
     chart_labels = []
     chart_data = []
     num_days = (end_date - start_date).days + 1
@@ -130,27 +156,50 @@ def dashboard(request):
     # Hourly chart: scoped to selected date range, 9 AM – 9 PM window
     EVENT_START = 9
     EVENT_END   = 21
-    from django.db.models.functions import ExtractHour
+    
     hourly_qs = (
         Customer.objects
-        .filter(registered_at__date__gte=from_date, registered_at__date__lte=to_date)
-        .annotate(hour_val=ExtractHour('registered_at'))
-        .values('hour_val')
-        .annotate(count=Count('id'))
-        .order_by('hour_val')
+        .filter(registered_at__gte=from_datetime, registered_at__lte=to_datetime)
+        .values_list('registered_at', flat=True)
     )
-    hourly_map    = {row['hour_val']: row['count'] for row in hourly_qs if row['hour_val'] is not None}
+    hourly_map = {}
+    for dt in hourly_qs:
+        if dt:
+            local_dt = timezone.localtime(dt)
+            hour = local_dt.hour
+            hourly_map[hour] = hourly_map.get(hour, 0) + 1
+
     hourly_labels = [f'{h:02d}:00' for h in range(EVENT_START, EVENT_END + 1)]
     hourly_data   = [hourly_map.get(h, 0) for h in range(EVENT_START, EVENT_END + 1)]
 
     # All unique dates that have registrations (for calendar highlighting)
-    registered_dates = list(
-        Customer.objects
-        .values_list('registered_at__date', flat=True)
-        .distinct()
-        .order_by()
-    )
-    registered_dates_json = json.dumps([d.isoformat() for d in registered_dates if d])
+    all_registrations = Customer.objects.values_list('registered_at', flat=True)
+    registered_dates = {timezone.localtime(dt).date() for dt in all_registrations if dt}
+    registered_dates_json = json.dumps([d.isoformat() for d in registered_dates])
+
+    # Gift winning counts breakdown: scoped to selected date range (from_datetime to to_datetime)
+    gifts_qs = Gift.objects.filter(is_active=True).annotate(
+        win_count=Count(
+            'winners',
+            filter=Q(
+                winners__registered_at__gte=from_datetime,
+                winners__registered_at__lte=to_datetime,
+                winners__game_result=Customer.RESULT_WIN
+            )
+        )
+    ).order_by('-win_count')
+
+    gift_labels = [g.name for g in gifts_qs]
+    gift_data = [g.win_count for g in gifts_qs]
+
+    # Append the complimentary/consolation gift given to all Loss participants
+    consolation_count = Customer.objects.filter(
+        game_result=Customer.RESULT_LOSS,
+        registered_at__gte=from_datetime,
+        registered_at__lte=to_datetime,
+    ).count()
+    gift_labels.append(f'{Customer.CONSOLATION_GIFT} (Complimentary)')
+    gift_data.append(consolation_count)
 
     context = {
         'search_query':  search_query,
@@ -164,10 +213,14 @@ def dashboard(request):
         'total_count':   total_count,
         'played_count':  played_count,
         'today_count':   today_count,
+        'winners_count': winners_count,
+        'losers_count':  losers_count,
         'chart_labels':  json.dumps(chart_labels),
         'chart_data':    json.dumps(chart_data),
         'hourly_labels': json.dumps(hourly_labels),
         'hourly_data':   json.dumps(hourly_data),
+        'gift_labels':   json.dumps(gift_labels),
+        'gift_data':     json.dumps(gift_data),
         'registered_dates_json': registered_dates_json,
     }
     return render(request, 'customers/dashboard.html', context)
@@ -211,6 +264,12 @@ def report(request):
     paginator   = Paginator(customers, 50)
     page_number = request.GET.get('page')
     page_obj    = paginator.get_page(page_number)
+
+    # Assign chronological serial number (oldest gets 1, newest gets highest number)
+    total_count = paginator.count
+    start_idx = page_obj.start_index()
+    for idx, customer in enumerate(page_obj.object_list):
+        customer.serial_number = total_count - (start_idx - 1) - idx
 
     context = {
         'page_obj':      page_obj,
@@ -267,8 +326,8 @@ def export_report_excel(request):
         bottom=Side(style='thin', color='D0D0D0'),
     )
 
-    headers = ['#', 'Name', 'Mobile Number', 'Aadhar Number', 'Bill Number', 'Status', 'Registered Date', 'Registered Time']
-    col_widths = [6, 28, 18, 20, 18, 12, 18, 16]
+    headers = ['#', 'Name', 'Mobile Number', 'Aadhar Number', 'Bill Number', 'Status', 'Game Result', 'Gift', 'Registered Date', 'Registered Time']
+    col_widths = [6, 28, 18, 20, 18, 12, 12, 32, 18, 16]
 
     for col_idx, (header, width) in enumerate(zip(headers, col_widths), start=1):
         cell = ws.cell(row=1, column=col_idx, value=header)
@@ -285,23 +344,28 @@ def export_report_excel(request):
     data_font = Font(size=10)
     center_align = Alignment(horizontal='center', vertical='center')
 
-    for row_idx, customer in enumerate(customers.iterator(), start=2):
+    total_count = customers.count()
+    for idx, customer in enumerate(customers.iterator()):
+        row_idx = idx + 2
         row_fill = alt_fill if row_idx % 2 == 0 else None
+        local_time = timezone.localtime(customer.registered_at)
         row_data = [
-            customer.pk,
+            total_count - idx,
             customer.name,
             customer.mobile_number,
             customer.aadhar_number,
             customer.bill_number,
             'Played' if customer.has_played else 'Pending',
-            customer.registered_at.strftime('%d-%m-%Y'),
-            customer.registered_at.strftime('%H:%M'),
+            customer.get_game_result_display(),
+            customer.gift_display or '—',
+            local_time.strftime('%d-%m-%Y'),
+            local_time.strftime('%H:%M'),
         ]
         for col_idx, value in enumerate(row_data, start=1):
             cell = ws.cell(row=row_idx, column=col_idx, value=value)
             cell.font   = data_font
             cell.border = thin_border
-            cell.alignment = center_align if col_idx in (1, 6, 7, 8) else Alignment(vertical='center')
+            cell.alignment = center_align if col_idx in (1, 6, 7, 9, 10) else Alignment(vertical='center')
             if row_fill:
                 cell.fill = row_fill
 
