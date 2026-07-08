@@ -112,22 +112,23 @@ def dashboard(request):
     if date_filter:
         total_count  = agg['filtered_total']
         played_count = agg['filtered_played']
+        winners_count = agg['filtered_win']
+        losers_count  = agg['filtered_loss']
     else:
         total_count  = agg['total_all']
         played_count = agg['played_all']
+        winners_count = agg['winners_all']
+        losers_count  = agg['losers_all']
     today_count      = agg['today']
-    winners_count    = agg['winners_all']
-    losers_count     = agg['losers_all']
-    filtered_win_count  = agg['filtered_win']
-    filtered_loss_count = agg['filtered_loss']
 
-    # Bar chart: 7-day window or selected range
-    if from_date == to_date:
-        start_date = from_date - timedelta(days=6)
-        end_date = from_date
-    else:
+    # Bar chart: 7-day window for default, or exact selected range/date when filtered
+    if date_filter:
         start_date = from_date
         end_date = to_date
+    else:
+        # Default: 7-day trend ending on current day
+        start_date = from_date - timedelta(days=6)
+        end_date = from_date
 
     start_datetime = timezone.make_aware(datetime.datetime.combine(start_date, datetime.time.min))
     end_datetime = timezone.make_aware(datetime.datetime.combine(end_date, datetime.time.max))
@@ -177,27 +178,23 @@ def dashboard(request):
     registered_dates = {timezone.localtime(dt).date() for dt in all_registrations if dt}
     registered_dates_json = json.dumps([d.isoformat() for d in registered_dates])
 
-    # Gift winning counts breakdown: scoped to selected date range (from_datetime to to_datetime)
+    # Gift winning counts breakdown: all-time by default, scoped to the selected
+    # date range only when a date filter is actually applied.
+    gift_win_filter = Q(winners__game_result=Customer.RESULT_WIN)
+    consolation_filter = Q(game_result=Customer.RESULT_LOSS)
+    if date_filter:
+        gift_win_filter &= Q(winners__registered_at__gte=from_datetime, winners__registered_at__lte=to_datetime)
+        consolation_filter &= Q(registered_at__gte=from_datetime, registered_at__lte=to_datetime)
+
     gifts_qs = Gift.objects.filter(is_active=True).annotate(
-        win_count=Count(
-            'winners',
-            filter=Q(
-                winners__registered_at__gte=from_datetime,
-                winners__registered_at__lte=to_datetime,
-                winners__game_result=Customer.RESULT_WIN
-            )
-        )
+        win_count=Count('winners', filter=gift_win_filter)
     ).order_by('-win_count')
 
     gift_labels = [g.name for g in gifts_qs]
     gift_data = [g.win_count for g in gifts_qs]
 
     # Append the complimentary/consolation gift given to all Loss participants
-    consolation_count = Customer.objects.filter(
-        game_result=Customer.RESULT_LOSS,
-        registered_at__gte=from_datetime,
-        registered_at__lte=to_datetime,
-    ).count()
+    consolation_count = Customer.objects.filter(consolation_filter).count()
     gift_labels.append(f'{Customer.CONSOLATION_GIFT} (Complimentary)')
     gift_data.append(consolation_count)
 
@@ -232,23 +229,29 @@ def report(request):
     from_date_str = request.GET.get('from_date', '').strip()
     to_date_str   = request.GET.get('to_date', '').strip()
     search_query  = request.GET.get('q', '').strip()
+    result_filter = request.GET.get('result', '').strip()
+    gift_filter   = request.GET.get('gift', '').strip()
 
     customers = Customer.objects.all()
 
     from_date = None
     to_date   = None
 
+    # Timezone-aware datetime range instead of __date lookups, which rely on the
+    # database's CONVERT_TZ (breaks silently on MySQL without timezone tables loaded).
     if from_date_str:
         try:
             from_date = date_type.fromisoformat(from_date_str)
-            customers = customers.filter(registered_at__date__gte=from_date)
+            from_datetime = timezone.make_aware(datetime.datetime.combine(from_date, datetime.time.min))
+            customers = customers.filter(registered_at__gte=from_datetime)
         except ValueError:
             from_date_str = ''
 
     if to_date_str:
         try:
             to_date = date_type.fromisoformat(to_date_str)
-            customers = customers.filter(registered_at__date__lte=to_date)
+            to_datetime = timezone.make_aware(datetime.datetime.combine(to_date, datetime.time.max))
+            customers = customers.filter(registered_at__lte=to_datetime)
         except ValueError:
             to_date_str = ''
 
@@ -258,6 +261,22 @@ def report(request):
             Q(mobile_number__icontains=search_query) |
             Q(bill_number__icontains=search_query)
         )
+
+    if result_filter in dict(Customer.RESULT_CHOICES):
+        customers = customers.filter(game_result=result_filter)
+    else:
+        result_filter = ''
+
+    selected_gift = None
+    if gift_filter:
+        if gift_filter.isdigit():
+            selected_gift = Gift.objects.filter(pk=gift_filter).first()
+            if selected_gift:
+                customers = customers.filter(won_gift_id=gift_filter)
+            else:
+                gift_filter = ''
+        else:
+            gift_filter = ''
 
     total_filtered = customers.count()
 
@@ -271,14 +290,30 @@ def report(request):
     for idx, customer in enumerate(page_obj.object_list):
         customer.serial_number = total_count - (start_idx - 1) - idx
 
+    # Shared query string (without 'page') reused by export link and pagination links
+    filter_params = {
+        'from_date': from_date_str,
+        'to_date':   to_date_str,
+        'q':         search_query,
+        'result':    result_filter,
+        'gift':      gift_filter,
+    }
+    from urllib.parse import quote
+    filter_qs = '&'.join(f'{k}={quote(v)}' for k, v in filter_params.items() if v)
+
     context = {
         'page_obj':      page_obj,
         'search_query':  search_query,
         'from_date_str': from_date_str,
         'to_date_str':   to_date_str,
+        'filter_qs':     filter_qs,
         'from_date':     from_date,
         'to_date':       to_date,
         'total_filtered': total_filtered,
+        'result_filter': result_filter,
+        'gift_filter':   gift_filter,
+        'selected_gift': selected_gift,
+        'gifts':         Gift.objects.all(),
     }
     return render(request, 'customers/report.html', context)
 
@@ -289,18 +324,24 @@ def export_report_excel(request):
     from_date_str = request.GET.get('from_date', '').strip()
     to_date_str   = request.GET.get('to_date', '').strip()
     search_query  = request.GET.get('q', '').strip()
+    result_filter = request.GET.get('result', '').strip()
+    gift_filter   = request.GET.get('gift', '').strip()
 
     customers = Customer.objects.all()
 
     if from_date_str:
         try:
-            customers = customers.filter(registered_at__date__gte=date_type.fromisoformat(from_date_str))
+            from_date = date_type.fromisoformat(from_date_str)
+            from_datetime = timezone.make_aware(datetime.datetime.combine(from_date, datetime.time.min))
+            customers = customers.filter(registered_at__gte=from_datetime)
         except ValueError:
             pass
 
     if to_date_str:
         try:
-            customers = customers.filter(registered_at__date__lte=date_type.fromisoformat(to_date_str))
+            to_date = date_type.fromisoformat(to_date_str)
+            to_datetime = timezone.make_aware(datetime.datetime.combine(to_date, datetime.time.max))
+            customers = customers.filter(registered_at__lte=to_datetime)
         except ValueError:
             pass
 
@@ -310,6 +351,12 @@ def export_report_excel(request):
             Q(mobile_number__icontains=search_query) |
             Q(bill_number__icontains=search_query)
         )
+
+    if result_filter in dict(Customer.RESULT_CHOICES):
+        customers = customers.filter(game_result=result_filter)
+
+    if gift_filter.isdigit():
+        customers = customers.filter(won_gift_id=gift_filter)
 
     wb = openpyxl.Workbook()
     ws = wb.active

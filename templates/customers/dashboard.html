@@ -313,14 +313,18 @@
     <div class="stat-card stat-card-orange">
       <div class="stat-icon">🏆</div>
       <div class="stat-num">{{ winners_count }}</div>
-      <div class="stat-label">Total Winners</div>
+      <div class="stat-label">
+        {% if date_filter %}Winners for {{ date_display }}{% else %}Total Winners{% endif %}
+      </div>
     </div>
   </div>
   <div class="col-12 col-sm-6 col-lg-3">
     <div class="stat-card stat-card-red">
       <div class="stat-icon">😕</div>
       <div class="stat-num">{{ losers_count }}</div>
-      <div class="stat-label">Total Loss</div>
+      <div class="stat-label">
+        {% if date_filter %}Loss for {{ date_display }}{% else %}Total Loss{% endif %}
+      </div>
     </div>
   </div>
 </div>
@@ -380,7 +384,7 @@
             <h6 class="fw-bold mb-0" style="color:#1a1a2e;">
               <i class="bi bi-gift-fill text-danger me-2"></i>Gifts Win Count
             </h6>
-            <small class="text-muted">Prizes won breakdown for {{ date_display }}</small>
+            <small class="text-muted">Prizes won breakdown &bull; {% if date_filter %}{{ date_display }}{% else %}All Time{% endif %}</small>
           </div>
         </div>
         <div style="height: 250px; position: relative;">

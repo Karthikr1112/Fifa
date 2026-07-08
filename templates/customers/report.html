@@ -108,6 +108,24 @@
     font-weight: 700;
   }
 
+  /* Scrollable table body with a sticky header, like a live data grid */
+  .table-scroll-wrap {
+    max-height: 600px;
+    overflow-y: auto;
+    overflow-x: auto;
+  }
+  .table-scroll-wrap table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #fff;
+    box-shadow: 0 2px 0 #e9ecef;
+  }
+  .table-scroll-wrap::-webkit-scrollbar { width: 10px; height: 10px; }
+  .table-scroll-wrap::-webkit-scrollbar-track { background: #f4f6fb; }
+  .table-scroll-wrap::-webkit-scrollbar-thumb { background: #ccd2da; border-radius: 10px; }
+  .table-scroll-wrap::-webkit-scrollbar-thumb:hover { background: #b7bec7; }
+
   @media (max-width: 575px) {
     .date-range-input { min-width: unset; width: 100%; }
     .filter-card > form > .d-flex > div:first-child,
@@ -156,21 +174,41 @@
         </div>
       </div>
 
-      <!-- Apply / Clear -->
+      <!-- Win/Loss filter -->
+      <div>
+        <label class="form-label fw-semibold mb-1" style="font-size:0.8rem;color:#6c757d;text-transform:uppercase;letter-spacing:.8px;">Result</label>
+        <select name="result" class="form-select form-select-sm" style="border-radius:10px;min-width:130px;">
+          <option value="">All Results</option>
+          <option value="win" {% if result_filter == 'win' %}selected{% endif %}>Win</option>
+          <option value="loss" {% if result_filter == 'loss' %}selected{% endif %}>Loss</option>
+          <option value="pending" {% if result_filter == 'pending' %}selected{% endif %}>Pending</option>
+        </select>
+      </div>
+
+      <!-- Gift filter -->
+      <div>
+        <label class="form-label fw-semibold mb-1" style="font-size:0.8rem;color:#6c757d;text-transform:uppercase;letter-spacing:.8px;">Gift</label>
+        <select name="gift" class="form-select form-select-sm" style="border-radius:10px;min-width:170px;">
+          <option value="">All Gifts</option>
+          {% for gift in gifts %}
+          <option value="{{ gift.pk }}" {% if gift_filter == gift.pk|stringformat:"s" %}selected{% endif %}>{{ gift.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Filter / Reset -->
       <div class="d-flex gap-2 align-items-end pb-1">
         <button type="submit" class="btn btn-primary btn-sm" style="border-radius:10px;font-weight:600;">
-          <i class="bi bi-funnel-fill me-1"></i>Apply
+          <i class="bi bi-funnel-fill me-1"></i>Filter
         </button>
-        {% if from_date_str or to_date_str or search_query %}
-        <a href="{% url 'report' %}" class="btn btn-outline-secondary btn-sm" style="border-radius:10px;" title="Clear all filters">
-          <i class="bi bi-x-lg"></i> Clear
+        <a href="{% url 'report' %}" class="btn btn-outline-secondary btn-sm" style="border-radius:10px;" title="Reset all filters">
+          Reset
         </a>
-        {% endif %}
       </div>
 
     </div>
 
-    {% if from_date or to_date or search_query %}
+    {% if from_date or to_date or search_query or result_filter or gift_filter %}
     <div class="mt-2 pt-2 border-top d-flex flex-wrap align-items-center gap-2">
       <i class="bi bi-funnel-fill text-danger" style="font-size:0.82rem;"></i>
       <small class="text-muted">
@@ -180,6 +218,8 @@
         {% if from_date %}from <strong>{{ from_date|date:"d M Y" }}</strong>{% endif %}
         {% if to_date %}to <strong>{{ to_date|date:"d M Y" }}</strong>{% endif %}
         {% if search_query %}matching "<strong>{{ search_query }}</strong>"{% endif %}
+        {% if result_filter %}with result <strong>{{ result_filter|title }}</strong>{% endif %}
+        {% if selected_gift %}with gift <strong>{{ selected_gift.name }}</strong>{% endif %}
       </small>
     </div>
     {% endif %}
@@ -202,15 +242,15 @@
       </div>
 
       <!-- Export button -->
-      <a href="{% url 'export_report_excel' %}?{% if from_date_str %}from_date={{ from_date_str }}&{% endif %}{% if to_date_str %}to_date={{ to_date_str }}&{% endif %}{% if search_query %}q={{ search_query }}{% endif %}"
+      <a href="{% url 'export_report_excel' %}?{{ filter_qs }}"
          class="export-btn">
         <i class="bi bi-file-earmark-excel-fill"></i>
         Export Excel
       </a>
     </div>
 
-    <!-- Table -->
-    <div class="table-responsive">
+    <!-- Table (sticky header, scrolls internally) -->
+    <div class="table-responsive table-scroll-wrap">
       <table class="table mb-0">
         <thead>
           <tr>
@@ -309,7 +349,7 @@
           {% if page_obj.has_previous %}
           <li class="page-item">
             <a class="page-link"
-               href="?{% if from_date_str %}from_date={{ from_date_str }}&{% endif %}{% if to_date_str %}to_date={{ to_date_str }}&{% endif %}{% if search_query %}q={{ search_query }}&{% endif %}page={{ page_obj.previous_page_number }}">
+               href="?{{ filter_qs }}{% if filter_qs %}&{% endif %}page={{ page_obj.previous_page_number }}">
               <i class="bi bi-chevron-left"></i>
             </a>
           </li>
@@ -323,7 +363,7 @@
             {% elif num > page_obj.number|add:"-3" and num < page_obj.number|add:"3" %}
             <li class="page-item">
               <a class="page-link"
-                 href="?{% if from_date_str %}from_date={{ from_date_str }}&{% endif %}{% if to_date_str %}to_date={{ to_date_str }}&{% endif %}{% if search_query %}q={{ search_query }}&{% endif %}page={{ num }}">{{ num }}</a>
+                 href="?{{ filter_qs }}{% if filter_qs %}&{% endif %}page={{ num }}">{{ num }}</a>
             </li>
             {% endif %}
           {% endfor %}
@@ -331,7 +371,7 @@
           {% if page_obj.has_next %}
           <li class="page-item">
             <a class="page-link"
-               href="?{% if from_date_str %}from_date={{ from_date_str }}&{% endif %}{% if to_date_str %}to_date={{ to_date_str }}&{% endif %}{% if search_query %}q={{ search_query }}&{% endif %}page={{ page_obj.next_page_number }}">
+               href="?{{ filter_qs }}{% if filter_qs %}&{% endif %}page={{ page_obj.next_page_number }}">
               <i class="bi bi-chevron-right"></i>
             </a>
           </li>

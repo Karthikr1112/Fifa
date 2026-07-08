@@ -52,6 +52,8 @@ class CustomerRegistrationForm(forms.ModelForm):
         cleaned_data = super().clean()
         game_result = cleaned_data.get('game_result')
         won_gift = cleaned_data.get('won_gift')
+        if game_result == Customer.RESULT_PENDING or not game_result:
+            self.add_error('game_result', 'Please select Win or Loss — Pending cannot be saved.')
         if game_result == Customer.RESULT_WIN and not won_gift:
             self.add_error('won_gift', 'Please select a gift for a winning customer.')
         if game_result != Customer.RESULT_WIN:

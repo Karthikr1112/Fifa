@@ -254,9 +254,12 @@
           <label for="id_name" class="form-label-custom">Full Name</label>
           <div class="input-icon-wrapper">
             <i class="bi bi-person input-icon"></i>
-            <input type="text" id="id_name" name="name" class="form-control-custom"
-                   placeholder="Enter full name"
-                   value="{{ form.name.value|default:'' }}" autofocus required />
+            <div class="input-wrap-inner">
+              <input type="text" id="id_name" name="name" class="form-control-custom"
+                     placeholder="Enter full name"
+                     value="{{ form.name.value|default:'' }}" autofocus required />
+              <div class="field-status" id="name-status"></div>
+            </div>
           </div>
           {% if form.name.errors %}
             <div class="field-error">
@@ -418,7 +421,7 @@
 
 {% block extra_js %}
 <script>
-  function setupDuplicateCheck(inputId, statusId, errorId, fieldName) {
+  function setupDuplicateCheck(inputId, statusId, errorId, fieldName, exactLength) {
     const input  = document.getElementById(inputId);
     const status = document.getElementById(statusId);
     const error  = document.getElementById(errorId);
@@ -430,8 +433,15 @@
       status.innerHTML = '';
       error.style.display = 'none';
       input.classList.remove('is-invalid');
-      
-      if (val.length < 3) return;
+
+      if (val.length === 0) return;
+
+      // Incomplete: fewer digits than required — show a wrong mark, skip the duplicate check
+      if (exactLength && val.length < exactLength) {
+        status.innerHTML = '<i class="bi bi-x-circle-fill text-danger"></i>';
+        return;
+      }
+
       status.innerHTML = '<span class="spinner-border spinner-border-sm text-secondary" style="width:12px;height:12px;"></span>';
       timer = setTimeout(() => {
         fetch(`{% url 'check_duplicate' %}?field=${fieldName}&value=${encodeURIComponent(val)}`)
@@ -453,9 +463,28 @@
     });
   }
 
-  setupDuplicateCheck('id_mobile_number', 'mobile-status', 'mobile-error', 'mobile_number');
-  setupDuplicateCheck('id_aadhar_number', 'aadhar-status', 'aadhar-error', 'aadhar_number');
+  setupDuplicateCheck('id_mobile_number', 'mobile-status', 'mobile-error', 'mobile_number', 10);
+  setupDuplicateCheck('id_aadhar_number', 'aadhar-status', 'aadhar-error', 'aadhar_number', 12);
   setupDuplicateCheck('id_bill_number',   'bill-status',   'bill-error',   'bill_number');
+
+  // Full Name has no duplicate check, just a minimum-length live indicator
+  function setupMinLengthCheck(inputId, statusId, minLength) {
+    const input  = document.getElementById(inputId);
+    const status = document.getElementById(statusId);
+    if (!input) return;
+    input.addEventListener('input', function () {
+      const val = this.value.trim();
+      if (val.length === 0) {
+        status.innerHTML = '';
+      } else if (val.length < minLength) {
+        status.innerHTML = '<i class="bi bi-x-circle-fill text-danger"></i>';
+      } else {
+        status.innerHTML = '<i class="bi bi-check-circle-fill text-success"></i>';
+      }
+    });
+  }
+
+  setupMinLengthCheck('id_name', 'name-status', 2);
 
   const gameResultSelect = document.getElementById('id_game_result');
   const giftFieldWrap    = document.getElementById('giftFieldWrap');
